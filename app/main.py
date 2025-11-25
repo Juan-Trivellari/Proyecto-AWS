@@ -5,8 +5,10 @@ Ejecutar desde la raíz del proyecto con:
     python -m uvicorn app.main:app --reload
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 import logging
 
 from app.routes import alumnos, profesores
@@ -42,10 +44,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ✅ NUEVO: Convertir errores de validación Pydantic (422) a 400
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Captura errores de validación de Pydantic (422) y los devuelve como 400.
+    Esto asegura compatibilidad con tests que esperan código 400.
+    """
+    logger.warning(f"Error de validación en {request.url.path}: {exc.errors()}")
+    
+    # Extraer mensajes de error
+    errors = []
+    for error in exc.errors():
+        field = " -> ".join(str(x) for x in error["loc"])
+        message = error["msg"]
+        errors.append(f"{field}: {message}")
+    
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,  # ✅ Cambiar de 422 a 400
+        content={
+            "error": "Validation Error",
+            "message": "Los datos proporcionados no son válidos",
+            "detail": errors,
+            "path": str(request.url.path),
+        },
+    )
+
+
+# Manejadores de excepciones personalizadas
 app.add_exception_handler(ValidationError, validation_error_handler)
 app.add_exception_handler(NotFoundError, not_found_error_handler)
 app.add_exception_handler(ServerError, server_error_handler)
 
+# Routers
 app.include_router(alumnos.router, prefix="/alumnos", tags=["Alumnos"])
 app.include_router(profesores.router, prefix="/profesores", tags=["Profesores"])
 

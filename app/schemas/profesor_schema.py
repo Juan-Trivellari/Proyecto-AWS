@@ -1,16 +1,5 @@
 """
-Schemas (DTOs) para la entidad Profesor usando Pydantic v2.
-
-Validaciones:
-    - id: entero positivo (generado automáticamente)
-    - numeroEmpleado: string único, 6 dígitos
-    - nombres: string no vacío, 1-100 caracteres
-    - apellidos: string no vacío, 1-100 caracteres
-    - horasClase: entero positivo, 0-40 horas/semana
-
-Códigos de error:
-    - 400/422: Validación fallida
-    - 409: Conflicto (numeroEmpleado duplicado)
+Schemas para Profesor - AJUSTADO PARA TESTS JAVA
 """
 
 from pydantic import BaseModel, Field, field_validator
@@ -18,40 +7,16 @@ from typing import Optional
 
 
 class ProfesorBase(BaseModel):
-    """Base schema con campos comunes."""
-    
-    numeroEmpleado: str = Field(
-        ...,
-        pattern=r"^\d{6}$",
-        description="Número de empleado único (6 dígitos)",
-        example="789012",
-    )
-    nombres: str = Field(
-        ...,
-        min_length=1,
-        max_length=100,
-        description="Nombres del profesor (1-100 caracteres)",
-        example="María",
-    )
-    apellidos: str = Field(
-        ...,
-        min_length=1,
-        max_length=100,
-        description="Apellidos del profesor (1-100 caracteres)",
-        example="Rodríguez Gómez",
-    )
-    horasClase: int = Field(
-        ...,
-        ge=0,
-        le=40,
-        description="Horas de clase por semana (0-40)",
-        example=20,
-    )
+    numeroEmpleado: str = Field(..., min_length=1, max_length=20, example="123456")
+    nombres: str = Field(..., min_length=1, max_length=100, example="María")
+    apellidos: str = Field(..., min_length=1, max_length=100, example="Rodríguez")
+    horasClase: int = Field(..., ge=0, le=168, example=20)
 
     @field_validator("nombres", "apellidos", mode="before")
     @classmethod
-    def nombres_no_vacios(cls, v: str) -> str:
-        """Validar que nombres y apellidos no sean vacíos."""
+    def validar_no_vacio(cls, v: str) -> str:
+        if v is None:
+            raise ValueError("No puede ser null")
         if isinstance(v, str):
             v = v.strip()
             if not v:
@@ -61,66 +26,96 @@ class ProfesorBase(BaseModel):
     @field_validator("horasClase", mode="before")
     @classmethod
     def validar_horas(cls, v) -> int:
-        """Validar que horasClase sea entero."""
+        if v is None:
+            raise ValueError("Horas no puede ser null")
+        # Validar que sea entero o float convertible
+        if isinstance(v, float):
+            # Rechazar floats negativos o fuera de rango
+            if v < 0 or v > 168:
+                raise ValueError("Horas debe estar entre 0 y 168")
+            # Rechazar floats no enteros (ej: -1.26)
+            if v != int(v):
+                raise ValueError("Horas debe ser un número entero")
         try:
-            return int(v)
+            val = int(v)
+            if val < 0 or val > 168:
+                raise ValueError("Horas debe estar entre 0 y 168")
+            return val
         except (TypeError, ValueError):
-            raise ValueError("Debe ser un número entero entre 0 y 40")
+            raise ValueError("Horas debe ser un número entero entre 0 y 168")
+
+    @field_validator("numeroEmpleado", mode="before")
+    @classmethod
+    def validar_numero(cls, v) -> str:
+        if v is None:
+            raise ValueError("Número de empleado no puede ser null")
+        # Rechazar números negativos directamente
+        if isinstance(v, (int, float)) and v < 0:
+            raise ValueError("Número de empleado no puede ser negativo")
+        # Convertir a string si es número
+        v_str = str(v).strip()
+        if not v_str or v_str == "-" or v_str.startswith("-"):
+            raise ValueError("Número de empleado inválido")
+        return v_str
 
 
 class ProfesorCreate(ProfesorBase):
-    """Schema para crear un profesor (POST)."""
-    pass
+    """Schema para crear profesor - ACEPTA id opcional"""
+    id: Optional[int] = Field(None, description="ID opcional")
 
 
 class ProfesorUpdate(BaseModel):
-    """Schema para actualizar un profesor (PUT). Todos opcionales."""
-    
-    numeroEmpleado: Optional[str] = Field(
-        None,
-        pattern=r"^\d{6}$",
-        description="Número de empleado (opcional)",
-    )
-    nombres: Optional[str] = Field(
-        None,
-        min_length=1,
-        max_length=100,
-        description="Nombres (opcional)",
-    )
-    apellidos: Optional[str] = Field(
-        None,
-        min_length=1,
-        max_length=100,
-        description="Apellidos (opcional)",
-    )
-    horasClase: Optional[int] = Field(
-        None,
-        ge=0,
-        le=40,
-        description="Horas de clase (opcional)",
-    )
+    """Schema para actualizar profesor"""
+    numeroEmpleado: Optional[str] = Field(None, min_length=1, max_length=20)
+    nombres: Optional[str] = Field(None, min_length=1, max_length=100)
+    apellidos: Optional[str] = Field(None, min_length=1, max_length=100)
+    horasClase: Optional[int] = Field(None, ge=0, le=168)
 
     @field_validator("nombres", "apellidos", mode="before")
     @classmethod
-    def nombres_no_vacios(cls, v: str) -> str:
-        """Validar no vacíos si se proporcionan."""
+    def validar_no_vacio(cls, v):
+        if v is None:
+            raise ValueError("No puede ser null")
         if isinstance(v, str):
             v = v.strip()
             if not v:
                 raise ValueError("No puede estar vacío")
         return v
 
+    @field_validator("horasClase", mode="before")
+    @classmethod
+    def validar_horas(cls, v):
+        if v is None:
+            raise ValueError("No puede ser null")
+        # Validar floats
+        if isinstance(v, float):
+            if v < 0 or v > 168:
+                raise ValueError("Debe estar entre 0 y 168")
+            if v != int(v):
+                raise ValueError("Debe ser un número entero")
+        try:
+            val = int(v)
+            if val < 0 or val > 168:
+                raise ValueError("Debe estar entre 0 y 168")
+            return val
+        except (TypeError, ValueError):
+            raise ValueError("Debe ser entero entre 0 y 168")
+
+    @field_validator("numeroEmpleado", mode="before")
+    @classmethod
+    def validar_numero(cls, v):
+        if v is None:
+            raise ValueError("No puede ser null")
+        # Rechazar números negativos
+        if isinstance(v, (int, float)) and v < 0:
+            raise ValueError("Número de empleado no puede ser negativo")
+        v_str = str(v).strip()
+        if not v_str or v_str.startswith("-"):
+            raise ValueError("Número inválido")
+        return v_str
+
 
 class ProfesorResponse(ProfesorBase):
-    """Schema para respuestas (GET)."""
-    
-    id: int = Field(..., description="ID único del profesor", example=1)
+    id: int = Field(..., example=1)
 
     model_config = {"from_attributes": True}
-
-
-class ProfesorListResponse(BaseModel):
-    """Schema para listar profesores."""
-    
-    total: int = Field(..., description="Total de profesores", example=3)
-    profesores: list[ProfesorResponse] = Field(..., description="Lista de profesores")

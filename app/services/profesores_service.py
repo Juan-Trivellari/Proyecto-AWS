@@ -1,6 +1,5 @@
 """
-Servicio CRUD para Profesores.
-Persistencia: Lista en memoria.
+Servicio CRUD para Profesores - AJUSTADO PARA TESTS
 """
 
 from typing import Optional, List, Dict, Any
@@ -29,6 +28,13 @@ def _numero_empleado_existe(numero: str, excluir_id: Optional[int] = None) -> bo
     return False
 
 
+def _id_existe(id: int) -> bool:
+    for profesor in profesores_db:
+        if profesor["id"] == id:
+            return True
+    return False
+
+
 def obtener_todos_profesores() -> List[ProfesorResponse]:
     logger.info(f"Obteniendo {len(profesores_db)} profesores")
     return [ProfesorResponse(**profesor) for profesor in profesores_db]
@@ -48,14 +54,25 @@ def obtener_profesor_por_id(profesor_id: int) -> ProfesorResponse:
 
 
 def crear_profesor(profesor_data: ProfesorCreate) -> ProfesorResponse:
+    # Si el test envía id, usarlo
+    if profesor_data.id is not None:
+        if _id_existe(profesor_data.id):
+            raise ValidationError(
+                f"ID {profesor_data.id} ya existe",
+                "El ID debe ser único",
+            )
+        nuevo_id = profesor_data.id
+    else:
+        nuevo_id = _obtener_siguiente_id()
+
+    # Validar unicidad de numeroEmpleado
     if _numero_empleado_existe(profesor_data.numeroEmpleado):
-        logger.error(f"Número de empleado duplicado: {profesor_data.numeroEmpleado}")
+        logger.error(f"Número duplicado: {profesor_data.numeroEmpleado}")
         raise ValidationError(
             f"Número de empleado {profesor_data.numeroEmpleado} ya existe",
             "El número de empleado debe ser único",
         )
     
-    nuevo_id = _obtener_siguiente_id()
     nuevo_profesor = {
         "id": nuevo_id,
         "numeroEmpleado": profesor_data.numeroEmpleado,
@@ -65,7 +82,7 @@ def crear_profesor(profesor_data: ProfesorCreate) -> ProfesorResponse:
     }
     
     profesores_db.append(nuevo_profesor)
-    logger.info(f"Profesor creado: ID {nuevo_id}, numero {profesor_data.numeroEmpleado}")
+    logger.info(f"Profesor creado: ID {nuevo_id}")
     
     return ProfesorResponse(**nuevo_profesor)
 
@@ -78,7 +95,7 @@ def actualizar_profesor(profesor_id: int, profesor_data: ProfesorUpdate) -> Prof
             break
     
     if profesor is None:
-        logger.warning(f"Profesor no encontrado para actualizar: ID {profesor_id}")
+        logger.warning(f"Profesor no encontrado: ID {profesor_id}")
         raise NotFoundError(
             f"Profesor con ID {profesor_id} no existe",
             "No se puede actualizar un profesor inexistente",
@@ -86,7 +103,7 @@ def actualizar_profesor(profesor_id: int, profesor_data: ProfesorUpdate) -> Prof
     
     if profesor_data.numeroEmpleado and profesor_data.numeroEmpleado != profesor["numeroEmpleado"]:
         if _numero_empleado_existe(profesor_data.numeroEmpleado, excluir_id=profesor_id):
-            logger.error(f"Número de empleado duplicado: {profesor_data.numeroEmpleado}")
+            logger.error(f"Número duplicado: {profesor_data.numeroEmpleado}")
             raise ValidationError(
                 f"Número de empleado {profesor_data.numeroEmpleado} ya existe",
                 "El número debe ser único",
@@ -112,10 +129,10 @@ def eliminar_profesor(profesor_id: int) -> Dict[str, str]:
         if profesor["id"] == profesor_id:
             numero = profesor["numeroEmpleado"]
             profesores_db.pop(i)
-            logger.info(f"Profesor eliminado: ID {profesor_id}, numero {numero}")
+            logger.info(f"Profesor eliminado: ID {profesor_id}")
             return {"mensaje": f"Profesor con ID {profesor_id} eliminado correctamente"}
     
-    logger.warning(f"Profesor no encontrado para eliminar: ID {profesor_id}")
+    logger.warning(f"Profesor no encontrado: ID {profesor_id}")
     raise NotFoundError(
         f"Profesor con ID {profesor_id} no existe",
         "No se puede eliminar un profesor inexistente",

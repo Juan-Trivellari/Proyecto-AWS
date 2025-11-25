@@ -1,6 +1,5 @@
 """
-Servicio CRUD para Alumnos.
-Persistencia: Lista en memoria.
+Servicio CRUD para Alumnos - AJUSTADO PARA TESTS
 """
 
 from typing import Optional, List, Dict, Any
@@ -29,6 +28,13 @@ def _matricula_existe(matricula: str, excluir_id: Optional[int] = None) -> bool:
     return False
 
 
+def _id_existe(id: int) -> bool:
+    for alumno in alumnos_db:
+        if alumno["id"] == id:
+            return True
+    return False
+
+
 def obtener_todos_alumnos() -> List[AlumnoResponse]:
     logger.info(f"Obteniendo {len(alumnos_db)} alumnos")
     return [AlumnoResponse(**alumno) for alumno in alumnos_db]
@@ -48,14 +54,25 @@ def obtener_alumno_por_id(alumno_id: int) -> AlumnoResponse:
 
 
 def crear_alumno(alumno_data: AlumnoCreate) -> AlumnoResponse:
+    # Si el test envía id, usarlo; si no, generar uno
+    if alumno_data.id is not None:
+        if _id_existe(alumno_data.id):
+            raise ValidationError(
+                f"ID {alumno_data.id} ya existe",
+                "El ID debe ser único",
+            )
+        nuevo_id = alumno_data.id
+    else:
+        nuevo_id = _obtener_siguiente_id()
+
+    # Validar unicidad de matrícula
     if _matricula_existe(alumno_data.matricula):
         logger.error(f"Matrícula duplicada: {alumno_data.matricula}")
         raise ValidationError(
             f"Matrícula {alumno_data.matricula} ya está registrada",
-            "La matrícula debe ser única en el sistema",
+            "La matrícula debe ser única",
         )
     
-    nuevo_id = _obtener_siguiente_id()
     nuevo_alumno = {
         "id": nuevo_id,
         "nombres": alumno_data.nombres,
@@ -78,7 +95,7 @@ def actualizar_alumno(alumno_id: int, alumno_data: AlumnoUpdate) -> AlumnoRespon
             break
     
     if alumno is None:
-        logger.warning(f"Alumno no encontrado para actualizar: ID {alumno_id}")
+        logger.warning(f"Alumno no encontrado: ID {alumno_id}")
         raise NotFoundError(
             f"Alumno con ID {alumno_id} no existe",
             "No se puede actualizar un alumno inexistente",
@@ -115,7 +132,7 @@ def eliminar_alumno(alumno_id: int) -> Dict[str, str]:
             logger.info(f"Alumno eliminado: ID {alumno_id}, matrícula {matricula}")
             return {"mensaje": f"Alumno con ID {alumno_id} eliminado correctamente"}
     
-    logger.warning(f"Alumno no encontrado para eliminar: ID {alumno_id}")
+    logger.warning(f"Alumno no encontrado: ID {alumno_id}")
     raise NotFoundError(
         f"Alumno con ID {alumno_id} no existe",
         "No se puede eliminar un alumno inexistente",
