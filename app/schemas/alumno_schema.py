@@ -41,9 +41,12 @@ class AlumnoBase(BaseModel):
     def validar_matricula(cls, v) -> str:
         if v is None:
             raise ValueError("Matrícula no puede ser null")
-        # Rechazar números (los tests envían números inválidos)
-        if isinstance(v, (int, float)):
-            raise ValueError("Matrícula debe ser un string, no un número")
+        # Rechazar floats/doubles (valores como -1.223)
+        if isinstance(v, float):
+            raise ValueError("Matrícula no puede ser un número decimal")
+        # Convertir int a string si es necesario
+        if isinstance(v, int):
+            v = str(v)
         if not isinstance(v, str) or not v.strip():
             raise ValueError("Matrícula debe ser un string no vacío")
         return v.strip()
@@ -90,9 +93,12 @@ class AlumnoUpdate(BaseModel):
     def validar_matricula(cls, v):
         if v is None:
             raise ValueError("No puede ser null")
-        # Rechazar números
-        if isinstance(v, (int, float)):
-            raise ValueError("Matrícula debe ser un string, no un número")
+        # Rechazar floats/doubles
+        if isinstance(v, float):
+            raise ValueError("Matrícula no puede ser un número decimal")
+        # Convertir int a string
+        if isinstance(v, int):
+            v = str(v)
         if not isinstance(v, str) or not v.strip():
             raise ValueError("Debe ser string no vacío")
         return v.strip()
