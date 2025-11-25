@@ -30,11 +30,12 @@ class AlumnoBase(BaseModel):
             raise ValueError("Promedio no puede ser null")
         try:
             val = float(v)
-            if val < 0.0 or val > 5.0:
-                raise ValueError("Promedio debe estar entre 0.0 y 5.0")
-            return val
-        except (TypeError, ValueError) as e:
-            raise ValueError("Promedio debe ser un número entre 0.0 y 5.0")
+        except (TypeError, ValueError):
+            raise ValueError("Promedio debe ser un número válido")
+        
+        if val < 0.0 or val > 5.0:
+            raise ValueError("Promedio debe estar entre 0.0 y 5.0")
+        return val
 
     @field_validator("matricula", mode="before")
     @classmethod
@@ -82,11 +83,12 @@ class AlumnoUpdate(BaseModel):
             raise ValueError("No puede ser null")
         try:
             val = float(v)
-            if val < 0.0 or val > 5.0:
-                raise ValueError("Debe estar entre 0.0 y 5.0")
-            return val
         except (TypeError, ValueError):
-            raise ValueError("Debe ser un número entre 0.0 y 5.0")
+            raise ValueError("Debe ser un número válido")
+        
+        if val < 0.0 or val > 5.0:
+            raise ValueError("Debe estar entre 0.0 y 5.0")
+        return val
 
     @field_validator("matricula", mode="before")
     @classmethod

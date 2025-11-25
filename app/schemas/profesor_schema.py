@@ -28,6 +28,7 @@ class ProfesorBase(BaseModel):
     def validar_horas(cls, v) -> int:
         if v is None:
             raise ValueError("Horas no puede ser null")
+        
         # Validar que sea entero o float convertible
         if isinstance(v, float):
             # Rechazar floats negativos o fuera de rango
@@ -36,13 +37,16 @@ class ProfesorBase(BaseModel):
             # Rechazar floats no enteros (ej: -1.26)
             if v != int(v):
                 raise ValueError("Horas debe ser un número entero")
+            v = int(v)
+        
         try:
             val = int(v)
-            if val < 0 or val > 168:
-                raise ValueError("Horas debe estar entre 0 y 168")
-            return val
         except (TypeError, ValueError):
-            raise ValueError("Horas debe ser un número entero entre 0 y 168")
+            raise ValueError("Horas debe ser un número entero")
+        
+        if val < 0 or val > 168:
+            raise ValueError("Horas debe estar entre 0 y 168")
+        return val
 
     @field_validator("numeroEmpleado", mode="before")
     @classmethod
@@ -87,19 +91,23 @@ class ProfesorUpdate(BaseModel):
     def validar_horas(cls, v):
         if v is None:
             raise ValueError("No puede ser null")
+        
         # Validar floats
         if isinstance(v, float):
             if v < 0 or v > 168:
                 raise ValueError("Debe estar entre 0 y 168")
             if v != int(v):
                 raise ValueError("Debe ser un número entero")
+            v = int(v)
+        
         try:
             val = int(v)
-            if val < 0 or val > 168:
-                raise ValueError("Debe estar entre 0 y 168")
-            return val
         except (TypeError, ValueError):
-            raise ValueError("Debe ser entero entre 0 y 168")
+            raise ValueError("Debe ser un número entero")
+        
+        if val < 0 or val > 168:
+            raise ValueError("Debe estar entre 0 y 168")
+        return val
 
     @field_validator("numeroEmpleado", mode="before")
     @classmethod
